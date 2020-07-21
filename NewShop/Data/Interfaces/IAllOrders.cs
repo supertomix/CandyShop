@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 
 namespace NewShop.Data.Interfaces
 {
-    public interface IAllProducts
+    public interface IAllOrders
     {
-        IEnumerable<Product> Products { get;}
-        IEnumerable<Product> GetFavProducts { get; }
-        Product GetProduct(int ProductID);
+        void CreateOrder(Order order);
     }
 }

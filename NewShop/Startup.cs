@@ -11,8 +11,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using NewShop.Data;
 using NewShop.Data.Interfaces;
-using NewShop.Data.Mocks;
-
+using NewShop.Data.Repository;
+using NewShop.Data.Models;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Mvc;
 
 namespace NewShop
 {
@@ -29,8 +31,16 @@ namespace NewShop
         {
             services.AddDbContext<AppDBContent>(options => options.UseSqlServer(_confString.GetConnectionString("DefaultConnection")));
             services.AddMvc(option => option.EnableEndpointRouting = false);
-            services.AddTransient<IAllProducts, MockProducts>();
-            services.AddTransient<IProductsCategory, MockCategory>();
+            services.AddTransient<IAllProducts, ProductRepository>();
+            services.AddTransient<IProductsCategory, CategoryRepository>();
+            services.AddTransient<IAllOrders, OrdersRepository>();  
+
+            services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            services.AddScoped(sp => ShopCart.GetCart(sp)); // у каждого юзера своя сессия
+
+            services.AddMvc();
+            services.AddMemoryCache();
+            services.AddSession();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -39,7 +49,20 @@ namespace NewShop
             app.UseDeveloperExceptionPage(); // отображение страницы с ошибками
             app.UseStatusCodePages(); //отображение кода ошибки
             app.UseStaticFiles(); //отображение статитческих файлов
-            app.UseMvcWithDefaultRoute(); //для отслеживания URL
+            app.UseSession();
+            //app.UseMvcWithDefaultRoute(); //для отслеживания URL
+            app.UseMvc(routes =>
+            {
+                routes.MapRoute(name: "Default", template: "{controller=Home}/{action=Index}/{Id?}");
+                routes.MapRoute(name: "CategoryFilter", template: "Product/{action}/{category?}", defaults: new { Controller = "Product", action = "List" });
+            });
+
+            using (var scope = app.ApplicationServices.CreateScope())
+            {
+                AppDBContent content = scope.ServiceProvider.GetRequiredService<AppDBContent>();
+                DBObjects.Initial(content);
+            }
+            
         }
     }
 }
